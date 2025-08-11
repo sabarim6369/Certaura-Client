@@ -123,22 +123,31 @@ const enableAutoStart = (examId) => {
 //   );
 // };
 
-const saveAutoMode = (examId) => {
-  setExams(
-    exams.map((exam) => {
-      if (exam.id === examId) {
-        // Here you can also send update to backend if needed
-        return {
-          ...exam,
-          autoMode: true,
-          status: "Stopped",
-          // autoOnTime and autoOffTime are already set
-        };
-      }
-      return exam;
-    })
-  );
+const saveAutoMode = async (examId) => {
+  const examToUpdate = exams.find((exam) => exam.id === examId);
+  if (!examToUpdate) return;
+
+  try {
+    // Call backend API to update this exam's autoMode, autoOnTime, autoOffTime
+    const response = await axios.put(`http://localhost:3000/exams/${examId}`, {
+      autoMode: true,
+      autoOnTime: examToUpdate.autoOnTime,
+      autoOffTime: examToUpdate.autoOffTime,
+    });
+
+    const updatedExam = response.data;
+
+    // Update state with updated exam data from backend
+    setExams((prev) =>
+      prev.map((exam) => (exam.id === examId ? { ...exam, ...updatedExam } : exam))
+    );
+
+  } catch (error) {
+    console.error("Failed to save auto mode:", error);
+    // optionally show user error toast here
+  }
 };
+
 
  const addExam = async () => {
   if (!newExamName.trim() || !newExamUrl.trim()) return;
@@ -191,36 +200,77 @@ const saveAutoMode = (examId) => {
     }
   };
 
-  const toggleStatus = (examId) => {
-    setExams(
-      exams.map((exam) =>
-        exam.id === examId
-          ? {
-              ...exam,
-              status:
-                exam.status === "Running" || exam.status === "Ongoing"
-                  ? "Stopped"
-                  : "Running",
-            }
-          : exam
-      )
-    );
-  };
+const toggleStatus = async (examId) => {
+  try {
+    const exam = exams.find((e) => e.id === examId);
+    if (!exam) return;
 
-  const toggleAutoMode = (examId) => {
-    setExams(
-      exams.map((exam) =>
-        exam.id === examId
-          ? {
-              ...exam,
-              autoMode: !exam.autoMode,
-              autoOnTime: "",
-              autoOffTime: "",
-            }
-          : exam
-      )
+    const newStatus =
+      exam.status === "Running" || exam.status === "Ongoing"
+        ? "Stopped"
+        : "Running";
+
+    const confirmMsg =
+      newStatus === "Running"
+        ? "Are you sure you want to start this exam?"
+        : "Are you sure you want to stop this exam?";
+
+    if (!window.confirm(confirmMsg)) {
+      return; // User cancelled
+    }
+
+    // Call backend update API for status change
+    const response = await axios.put(`http://localhost:3000/exams/${examId}`, {
+      status: newStatus,
+    });
+
+    const updatedExam = response.data;
+
+    // Update local state
+    setExams((prev) =>
+      prev.map((e) => (e.id === examId ? { ...e, ...updatedExam } : e))
     );
-  };
+  } catch (error) {
+    console.error("Failed to toggle status:", error);
+  }
+};
+
+
+
+const toggleAutoMode = async (examId) => {
+  try {
+    const exam = exams.find((e) => e.id === examId);
+    if (!exam) return;
+
+    const newAutoMode = !exam.autoMode;
+
+    const confirmMsg = newAutoMode
+      ? "Are you sure you want to enable Auto Mode?"
+      : "Are you sure you want to disable Auto Mode?";
+
+    if (!window.confirm(confirmMsg)) {
+      return; // User cancelled
+    }
+
+    // If turning off, optionally clear times
+    const payload = {
+      autoMode: newAutoMode,
+      autoOnTime: newAutoMode ? exam.autoOnTime : "",
+      autoOffTime: newAutoMode ? exam.autoOffTime : "",
+    };
+
+    const response = await axios.put(`http://localhost:3000/exams/${examId}`, payload);
+    const updatedExam = response.data;
+
+    setExams((prev) =>
+      prev.map((e) => (e.id === examId ? { ...e, ...updatedExam } : e))
+    );
+  } catch (error) {
+    console.error("Failed to toggle auto mode:", error);
+  }
+};
+
+
 
   const updateTimer = (examId, type, value) => {
     setExams(
