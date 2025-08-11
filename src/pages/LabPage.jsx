@@ -41,7 +41,6 @@ const handleCreateLab = async (e) => {
     setLabs((prev) => [...prev, lab]);
     setShowModal(false);
 
-    // Sanitize lab name for filenames
     const safeLabName = lab.name.replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
 
     // Download EXE with lab name first
