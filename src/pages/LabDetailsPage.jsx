@@ -30,20 +30,26 @@ export default function LabDetailsPage() {
   const [newExamUrl, setNewExamUrl] = useState("");
   const [newExamName, setNewExamName] = useState("");
   const [addingExam, setAddingExam] = useState(false);
+const [editingAutoId, setEditingAutoId] = useState(null);
 
 
-  useEffect(() => {
-    // Fetch exams for the lab on mount or id change
-    const fetchExams = async () => {
-      try {
-        const res = await axios.get(`http://localhost:3000/exams?labId=${id}`);
-        setExams(res.data);
-      } catch (error) {
-        console.error("Failed to fetch exams:", error);
-      }
-    };
-    fetchExams();
-  }, [id]);
+ useEffect(() => {
+  const fetchExams = async () => {
+    try {
+      const res = await axios.get(`http://localhost:3000/exams?labId=${id}`);
+      // Map exams so each has id property
+      const examsWithId = res.data.map((exam) => ({
+        id: exam._id || exam.id,
+        ...exam,
+      }));
+      setExams(examsWithId);
+    } catch (error) {
+      console.error("Failed to fetch exams:", error);
+    }
+  };
+  fetchExams();
+}, [id]);
+
 
   useEffect(() => {
     if (activeTab === "devices") {
@@ -84,6 +90,55 @@ export default function LabDetailsPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+const enableAutoStart = (examId) => {
+  // Enable autoMode and set default timers (e.g. current time + 1 hour and +2 hours)
+  const nowISO = new Date().toISOString().slice(0, 16);
+  const plusOneHour = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16);
+  const plusTwoHours = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16);
+
+  setExams(
+    exams.map((exam) =>
+      exam.id === examId
+        ? {
+            ...exam,
+            autoMode: true,
+            autoOnTime: nowISO,
+            autoOffTime: plusOneHour,
+            _autoOnTimeTemp: nowISO,    // temp fields for editing before save
+            _autoOffTimeTemp: plusTwoHours,
+          }
+        : exam
+    )
+  );
+};
+
+// Update temp times while editing before save
+// const updateTimer = (examId, type, value) => {
+//   setExams(
+//     exams.map((exam) =>
+//       exam.id === examId
+//         ? { ...exam, [type]: value }
+//         : exam
+//     )
+//   );
+// };
+
+const saveAutoMode = (examId) => {
+  setExams(
+    exams.map((exam) => {
+      if (exam.id === examId) {
+        // Here you can also send update to backend if needed
+        return {
+          ...exam,
+          autoMode: true,
+          status: "Stopped",
+          // autoOnTime and autoOffTime are already set
+        };
+      }
+      return exam;
+    })
+  );
+};
 
  const addExam = async () => {
   if (!newExamName.trim() || !newExamUrl.trim()) return;
@@ -304,39 +359,89 @@ export default function LabDetailsPage() {
                       }`}
                     >
                       <Clock size={16} />
-                      {exam.autoMode ? "Auto: ON" : "Auto: OFF"}
+                      {!exam.autoMode ? "Auto: ON" : "Auto: OFF"}
                     </button>
                   </div>
-                  {exam.autoMode && (
-                    <div className="flex flex-col gap-3 mt-3">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600 font-medium w-24">
-                          Auto ON
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={exam.autoOnTime}
-                          onChange={(e) =>
-                            updateTimer(exam.id, "autoOnTime", e.target.value)
-                          }
-                          className="border border-gray-300 rounded-lg p-2 flex-1 focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600 font-medium w-24">
-                          Auto OFF
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={exam.autoOffTime}
-                          onChange={(e) =>
-                            updateTimer(exam.id, "autoOffTime", e.target.value)
-                          }
-                          className="border border-gray-300 rounded-lg p-2 flex-1 focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  )}
+             {exam.autoMode ? (
+  editingAutoId === exam.id ? (
+    <div className="flex flex-col gap-3 mt-3">
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-gray-600 font-medium w-24">Auto ON</label>
+        <input
+          type="datetime-local"
+          value={exam.autoOnTime}
+          onChange={(e) => updateTimer(exam.id, "autoOnTime", e.target.value)}
+          className="border border-gray-300 rounded-lg p-2 flex-1 focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-gray-600 font-medium w-24">Auto OFF</label>
+        <input
+          type="datetime-local"
+          value={exam.autoOffTime}
+          onChange={(e) => updateTimer(exam.id, "autoOffTime", e.target.value)}
+          className="border border-gray-300 rounded-lg p-2 flex-1 focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="flex justify-end mt-2 gap-3">
+        <button
+          onClick={() => {
+            setEditingAutoId(null);
+            // Optional: revert changes if you want
+          }}
+          className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            saveAutoMode(exam.id);
+            setEditingAutoId(null);
+          }}
+          disabled={!exam.autoOnTime || !exam.autoOffTime}
+          className={`px-4 py-2 rounded-lg text-white transition ${
+            exam.autoOnTime && exam.autoOffTime
+              ? "bg-green-600 hover:bg-green-700"
+              : "bg-green-300 cursor-not-allowed"
+          }`}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center gap-4 mt-3 text-gray-700">
+      <div>
+        <strong>Auto ON:</strong>{" "}
+        {exam.autoOnTime
+          ? new Date(exam.autoOnTime).toLocaleString()
+          : "Not Set"}
+      </div>
+      <div>
+        <strong>Auto OFF:</strong>{" "}
+        {exam.autoOffTime
+          ? new Date(exam.autoOffTime).toLocaleString()
+          : "Not Set"}
+      </div>
+      <button
+        onClick={() => setEditingAutoId(exam.id)}
+        className="ml-auto px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-100 transition text-sm font-semibold"
+      >
+        Edit
+      </button>
+    </div>
+  )
+) : (
+  <button
+    onClick={() => enableAutoStart(exam.id)}
+    className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition border border-gray-300 hover:bg-gray-100"
+  >
+    <Clock size={16} />
+    Autostart
+  </button>
+)}
+
+
                 </div>
               ))}
             </div>
