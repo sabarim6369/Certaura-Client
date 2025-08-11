@@ -15,45 +15,33 @@ export default function LabDetailsPage() {
   const [activeTab, setActiveTab] = useState("exams");
   const [exams, setExams] = useState([]);
 const [devices, setDevices] = useState([
-  {
-    deviceId: "PC-001",
-    hostname: "Office-PC",
-    status: "Active",
-    ip: "192.168.1.10",
-    lastSeen: new Date().toISOString(),
-  },
-  {
-    deviceId: "PC-002",
-    hostname: "Home-PC",
-    status: "Inactive",
-    ip: "192.168.1.25",
-    lastSeen: new Date(Date.now() - 3600 * 1000).toISOString(), // 1 hour ago
-  },
-  {
-    deviceId: "PC-003",
-    hostname: "Lab-PC",
-    status: "Active",
-    ip: "192.168.1.50",
-    lastSeen: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 minutes ago
-  },
-  {
-    deviceId: "PC-004",
-    hostname: "Spare-PC",
-    status: "Offline",
-    ip: null,
-    lastSeen: null,
-  },
+ 
 ]);
-
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [devicesError, setDevicesError] = useState("");
   const [examUrl, setExamUrl] = useState("");
 
-  // Fetch devices for this lab
-  useEffect(() => {
+ useEffect(() => {
     if (activeTab === "devices") {
-      fetch(`/api/labs/${id}/devices`)
-        .then((res) => res.json())
-        .then((data) => setDevices(data))
-        .catch((err) => console.error("Error fetching devices:", err));
+      setLoadingDevices(true);
+      setDevicesError("");
+      fetch(`http://localhost:3000/agent/agents/lab/${id}`) 
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setDevices(data);
+        })
+        .catch((err) => {
+          console.error("Error fetching devices:", err);
+          setDevicesError("Failed to load devices. Please try again.");
+        })
+        .finally(() => {
+          setLoadingDevices(false);
+        });
     }
   }, [activeTab, id]);
 

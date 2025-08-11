@@ -29,25 +29,73 @@ export default function LabsPage() {
     fetchLabs();
   }, []);
 
-  const handleCreateLab = async (e) => {
-    e.preventDefault();
-    const newLab = {
-      name: e.target.name.value,
-      description: e.target.description.value || ""
-    };
-
-    try {
-      const res = await axios.post("http://localhost:3000/lab/addlabs", newLab);
-      setLabs((prev) => [...prev, res.data]);
-      setShowModal(false);
-    } catch (err) {
-      console.error("Error adding lab:", err);
-      alert("Failed to add lab. Please check server connection.");
-    }
+const handleCreateLab = async (e) => {
+  e.preventDefault();
+  const newLab = {
+    name: e.target.name.value,
+    description: e.target.description.value || ""
   };
 
+  try {
+    const res = await axios.post("http://localhost:3000/lab/addlabs", newLab);
+    const lab = res.data;
+    setLabs((prev) => [...prev, lab]);
+    setShowModal(false);
+
+    // Download the EXE separately (user downloads once)
+    const exeUrl = `${window.location.origin}/CertauraAgent.exe`;
+    const exeLink = document.createElement("a");
+    exeLink.href = exeUrl;
+    exeLink.download = "CertauraAgent.exe";
+    document.body.appendChild(exeLink);
+    exeLink.click();
+    exeLink.remove();
+
+    // Generate BAT content
+    const batContent = `
+@echo off
+:: Create config folder and write labId
+mkdir %USERPROFILE%\\.certauraagent 2>nul
+echo { "labId": "${lab._id}" } > %USERPROFILE%\\.certauraagent\\config.json
+
+:: Find the EXE in Downloads folder
+for %%f in ("%USERPROFILE%\\Downloads\\CertauraAgent*.exe") do (
+  set "agent=%%~f"
+  goto :found
+)
+
+echo Agent not found in Downloads folder.
+pause
+exit /b
+
+:found
+echo Launching agent at %agent%
+start "" "%agent%"
+pause
+`;
+
+    // Download BAT file
+    const blob = new Blob([batContent], { type: "application/octet-stream" });
+    const batLink = document.createElement("a");
+    batLink.href = URL.createObjectURL(blob);
+    batLink.download = `launch-certaura-agent-${lab.name}.bat`;
+    document.body.appendChild(batLink);
+    batLink.click();
+    batLink.remove();
+
+    alert(`Lab created. EXE & BAT file downloaded for ${lab.name}`);
+  } catch (err) {
+    console.error("Error adding lab:", err);
+    alert("Failed to add lab. Please check server connection.");
+  }
+};
+
+
+
+
+
   const openLabDetails = (lab, index) => {
-    navigate(`/labs/${index}`, { state: { lab } });
+    navigate(`/labs/${lab._id}`, { state: { lab } });
   };
 
   return (
