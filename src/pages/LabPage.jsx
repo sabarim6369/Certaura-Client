@@ -5,10 +5,25 @@ import { useNavigate } from "react-router-dom"; // ✅ Import navigation
 export default function LabsPage() {
   const navigate = useNavigate(); // ✅ Hook for navigation
   const [showModal, setShowModal] = useState(false);
-  const [labs, setLabs] = useState([
-    { name: "Physics Lab", type: "Physics", capacity: 30, status: "Available", description: "Experiments with motion, forces, and energy." },
-    { name: "Computer Lab", type: "Computer", capacity: 25, status: "Occupied", description: "Programming, simulations, and computational experiments." }
-  ]);
+ const [labs, setLabs] = useState([
+ 
+  {
+    name: "IT Center",
+    type: "Computer",
+    capacity: 40,
+    status: "Available",
+    description: "Networking, system administration, and server-side projects."
+  },
+  {
+    name: "Code Studio",
+    type: "Computer",
+    capacity: 20,
+    status: "Available",
+    description: "Collaborative space for coding bootcamps, hackathons, and software prototyping."
+  },
+ 
+]);
+
 
   const getLabIcon = (type) => {
     switch (type) {
