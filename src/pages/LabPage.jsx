@@ -1,54 +1,48 @@
-import { useState } from "react";
-import { PlusCircle, FlaskConical, Monitor, Beaker } from "lucide-react"; 
-import { useNavigate } from "react-router-dom"; // ✅ Import navigation
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { PlusCircle, FlaskConical } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function LabsPage() {
-  const navigate = useNavigate(); // ✅ Hook for navigation
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
- const [labs, setLabs] = useState([
- 
-  {
-    name: "IT Center",
-    type: "Computer",
-    capacity: 40,
-    status: "Available",
-    description: "Networking, system administration, and server-side projects."
-  },
-  {
-    name: "Code Studio",
-    type: "Computer",
-    capacity: 20,
-    status: "Available",
-    description: "Collaborative space for coding bootcamps, hackathons, and software prototyping."
-  },
- 
-]);
+  const [labs, setLabs] = useState([]);
 
+  // ✅ Fetch labs when component mounts
+  useEffect(() => {
+    const fetchLabs = async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/lab/labs");
+        setLabs(res.data);
+      } catch (err) {
+        console.error("Error fetching labs:", err);
+        alert("Failed to load labs. Please check server connection.");
+      }
+    };
 
-  const getLabIcon = (type) => {
-    switch (type) {
-      case "Physics": return <FlaskConical className="text-blue-500 w-8 h-8" />;
-      case "Chemistry": return <Beaker className="text-green-500 w-8 h-8" />;
-      case "Computer": return <Monitor className="text-purple-500 w-8 h-8" />;
-      default: return <FlaskConical className="text-gray-500 w-8 h-8" />;
-    }
-  };
+    fetchLabs();
+  }, []);
 
-  const handleCreateLab = (e) => {
+  const handleCreateLab = async (e) => {
     e.preventDefault();
     const newLab = {
       name: e.target.name.value,
-      type: e.target.type.value,
-      capacity: e.target.capacity.value,
-      status: "Available",
       description: e.target.description.value || ""
+      // ❌ Don't send status — let backend default handle it
     };
-    setLabs([...labs, newLab]);
-    setShowModal(false);
+
+    try {
+      const res = await axios.post("http://localhost:3000/lab/addlabs", newLab);
+      setLabs([...labs, res.data]);
+      setShowModal(false);
+    } catch (err) {
+      console.error("Error adding lab:", err);
+      alert("Failed to add lab. Please check server connection.");
+    }
   };
 
   const openLabDetails = (lab, index) => {
-    navigate(`/labs/${index}`, { state: { lab } }); // ✅ Pass lab data to details page
+    navigate(`/labs/${index}`, { state: { lab } });
   };
 
   return (
@@ -58,7 +52,7 @@ export default function LabsPage() {
         <h1 className="text-3xl font-bold text-gray-800">CertAura</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition cursor-pointer"
         >
           <PlusCircle size={20} /> Create Lab
         </button>
@@ -69,30 +63,25 @@ export default function LabsPage() {
         {labs.map((lab, index) => (
           <div
             key={index}
-            onClick={() => openLabDetails(lab, index)} // ✅ Click to navigate
+            onClick={() => openLabDetails(lab, index)}
             className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border border-gray-100 cursor-pointer"
           >
             <div className="flex items-center gap-4 mb-4">
-              {getLabIcon(lab.type)}
+              <FlaskConical className="text-blue-500 w-8 h-8" />
               <div>
                 <h2 className="text-xl font-semibold">{lab.name}</h2>
-                <p className="text-gray-500">{lab.type} Lab</p>
+                <p className="text-gray-500">{lab.description}</p>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span
-                className={`px-3 py-1 text-sm rounded-full font-medium ${
-                  lab.status === "Available"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {lab.status}
-              </span>
-              <span className="text-gray-500 text-sm">
-                Capacity: {lab.capacity}
-              </span>
-            </div>
+            <span
+              className={`px-3 py-1 text-sm rounded-full font-medium ${
+                lab.status?.toLowerCase() === "available"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {lab.status}
+            </span>
           </div>
         ))}
       </div>
@@ -107,23 +96,6 @@ export default function LabsPage() {
                 name="name"
                 type="text"
                 placeholder="Lab Name"
-                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <select
-                name="type"
-                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Select Lab Type</option>
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
-                <option value="Computer">Computer</option>
-              </select>
-              <input
-                name="capacity"
-                type="number"
-                placeholder="Capacity"
                 className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
