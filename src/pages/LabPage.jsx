@@ -1,25 +1,31 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { PlusCircle, FlaskConical } from "lucide-react";
+import { PlusCircle, FlaskConical, Frown, RefreshCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function LabsPage() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [labs, setLabs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // ✅ Fetch labs when component mounts
-  useEffect(() => {
-    const fetchLabs = async () => {
-      try {
-        const res = await axios.get("http://localhost:3000/lab/labs");
-        setLabs(res.data);
-      } catch (err) {
-        console.error("Error fetching labs:", err);
-        alert("Failed to load labs. Please check server connection.");
-      }
-    };
+  const fetchLabs = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await axios.get("http://localhost:3000/lab/labs");
+      setLabs(res.data || []);
+    } catch (err) {
+      console.error("Error fetching labs:", err);
+      setError("Failed to load labs. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchLabs();
   }, []);
 
@@ -28,12 +34,11 @@ export default function LabsPage() {
     const newLab = {
       name: e.target.name.value,
       description: e.target.description.value || ""
-      // ❌ Don't send status — let backend default handle it
     };
 
     try {
       const res = await axios.post("http://localhost:3000/lab/addlabs", newLab);
-      setLabs([...labs, res.data]);
+      setLabs((prev) => [...prev, res.data]);
       setShowModal(false);
     } catch (err) {
       console.error("Error adding lab:", err);
@@ -46,7 +51,7 @@ export default function LabsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">CertAura</h1>
@@ -58,33 +63,69 @@ export default function LabsPage() {
         </button>
       </div>
 
-      {/* Lab List */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {labs.map((lab, index) => (
-          <div
-            key={index}
-            onClick={() => openLabDetails(lab, index)}
-            className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border border-gray-100 cursor-pointer"
+      {/* Loading State */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+          <FlaskConical size={48} className="animate-bounce text-blue-500" />
+          <p className="mt-4">Loading labs...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="flex flex-col items-center justify-center py-20 text-red-500">
+          <Frown size={48} />
+          <p className="mt-4">{error}</p>
+          <button
+            onClick={fetchLabs}
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
           >
-            <div className="flex items-center gap-4 mb-4">
-              <FlaskConical className="text-blue-500 w-8 h-8" />
-              <div>
-                <h2 className="text-xl font-semibold">{lab.name}</h2>
-                <p className="text-gray-500">{lab.description}</p>
-              </div>
-            </div>
-            <span
-              className={`px-3 py-1 text-sm rounded-full font-medium ${
-                lab.status?.toLowerCase() === "available"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
+            <RefreshCcw size={18} /> Retry
+          </button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && labs.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+          <Frown size={48} />
+          <p className="mt-4">No labs found. Create your first lab!</p>
+        </div>
+      )}
+
+      {/* Lab List */}
+      {!loading && !error && labs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {labs.map((lab, index) => (
+            <div
+              key={index}
+              onClick={() => openLabDetails(lab, index)}
+              className="bg-white p-6 rounded-xl shadow hover:shadow-lg transition border border-gray-200 cursor-pointer group"
             >
-              {lab.status}
-            </span>
-          </div>
-        ))}
-      </div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 rounded-full bg-blue-50 group-hover:bg-blue-100 transition">
+                  <FlaskConical className="text-blue-600 w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    {lab.name}
+                  </h2>
+                  <p className="text-gray-500 text-sm">{lab.description}</p>
+                </div>
+              </div>
+              <span
+                className={`inline-block px-3 py-1 text-sm rounded-full font-medium ${
+                  lab.status?.toLowerCase() === "available"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {lab.status || "Unknown"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
