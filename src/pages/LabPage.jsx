@@ -28,7 +28,6 @@ export default function LabsPage() {
   useEffect(() => {
     fetchLabs();
   }, []);
-
 const handleCreateLab = async (e) => {
   e.preventDefault();
   const newLab = {
@@ -42,24 +41,27 @@ const handleCreateLab = async (e) => {
     setLabs((prev) => [...prev, lab]);
     setShowModal(false);
 
-    // Download the EXE separately (user downloads once)
+    // Sanitize lab name for filenames
+    const safeLabName = lab.name.replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
+
+    // Download EXE with lab name first
     const exeUrl = `${window.location.origin}/CertauraAgent.exe`;
     const exeLink = document.createElement("a");
     exeLink.href = exeUrl;
-    exeLink.download = "CertauraAgent.exe";
+    exeLink.download = `${safeLabName}_Agent.exe`;  // LabName_Agent.exe
     document.body.appendChild(exeLink);
     exeLink.click();
     exeLink.remove();
 
-    // Generate BAT content
+    // BAT content to find EXE with new name and launch it
     const batContent = `
 @echo off
 :: Create config folder and write labId
 mkdir %USERPROFILE%\\.certauraagent 2>nul
 echo { "labId": "${lab._id}" } > %USERPROFILE%\\.certauraagent\\config.json
 
-:: Find the EXE in Downloads folder
-for %%f in ("%USERPROFILE%\\Downloads\\CertauraAgent*.exe") do (
+:: Find the EXE in Downloads folder with lab name
+for %%f in ("%USERPROFILE%\\Downloads\\${safeLabName}_Agent.exe") do (
   set "agent=%%~f"
   goto :found
 )
@@ -74,11 +76,11 @@ start "" "%agent%"
 pause
 `;
 
-    // Download BAT file
+    // Download BAT file named accordingly
     const blob = new Blob([batContent], { type: "application/octet-stream" });
     const batLink = document.createElement("a");
     batLink.href = URL.createObjectURL(blob);
-    batLink.download = `launch-certaura-agent-${lab.name}.bat`;
+    batLink.download = `launch-${safeLabName}-agent.bat`; // launch-LabName-agent.bat
     document.body.appendChild(batLink);
     batLink.click();
     batLink.remove();
@@ -89,6 +91,7 @@ pause
     alert("Failed to add lab. Please check server connection.");
   }
 };
+
 
 
 
