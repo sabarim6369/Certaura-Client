@@ -10,6 +10,9 @@ import {
   PlusCircle,
   Inbox,
   Monitor,
+    Edit2,
+ Check,
+  X,
 } from "lucide-react";
 import axios from "axios";
 
@@ -17,7 +20,6 @@ export default function LabDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { state } = useLocation();
-  const lab = state?.lab || { id, name: "Unknown Lab", description: "" };
 
   const [activeTab, setActiveTab] = useState("exams");
   const [exams, setExams] = useState([]);
@@ -25,19 +27,22 @@ export default function LabDetailsPage() {
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [devicesError, setDevicesError] = useState("");
   
-  // Modal state for adding exam
-  const [showAddExamModal, setShowAddExamModal] = useState(false);
+ const initialLab = state?.lab || { id, name: "Unknown Lab", description: "" };
+
+  const [lab, setLab] = useState(initialLab);  const [showAddExamModal, setShowAddExamModal] = useState(false);
   const [newExamUrl, setNewExamUrl] = useState("");
   const [newExamName, setNewExamName] = useState("");
   const [addingExam, setAddingExam] = useState(false);
 const [editingAutoId, setEditingAutoId] = useState(null);
+  const [isEditingLab, setIsEditingLab] = useState(false);
+  const [labEditName, setLabEditName] = useState(lab.name);
+  const [labEditDescription, setLabEditDescription] = useState(lab.description);
 
 
  useEffect(() => {
   const fetchExams = async () => {
     try {
       const res = await axios.get(`http://localhost:3000/exams?labId=${id}`);
-      // Map exams so each has id property
       const examsWithId = res.data.map((exam) => ({
         id: exam._id || exam.id,
         ...exam,
@@ -234,8 +239,28 @@ const toggleStatus = async (examId) => {
     console.error("Failed to toggle status:", error);
   }
 };
+ const startEditingLab = () => {
+    setLabEditName(lab.name);
+    setLabEditDescription(lab.description);
+    setIsEditingLab(true);
+  };
+  const saveLabEdits = async () => {
+    try {
+      await axios.put(`http://localhost:3000/lab/labs/${lab._id}`, {
+        name: labEditName.trim(),
+        description: labEditDescription.trim(),
+      });
+      setLab({ ...lab, name: labEditName.trim(), description: labEditDescription.trim() });
+      setIsEditingLab(false);
+    } catch (error) {
+      console.error("Failed to save lab edits:", error);
+      alert("Failed to save lab changes.");
+    }
+  };
 
-
+  const cancelEditingLab = () => {
+    setIsEditingLab(false);
+  };
 
 const toggleAutoMode = async (examId) => {
   try {
@@ -294,14 +319,65 @@ const toggleAutoMode = async (examId) => {
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-snug">
-          {lab.name}
-        </h1>
-        {lab.description && (
-          <p className="text-lg text-gray-600 mt-2 leading-relaxed">
-            {lab.description}
-          </p>
-        )}
+      {/* Lab Title and Description with edit */}
+        <div className="flex items-center gap-4">
+          {isEditingLab ? (
+            <>
+              <input
+                type="text"
+                value={labEditName}
+                onChange={(e) => setLabEditName(e.target.value)}
+                className="text-4xl font-black text-gray-900 tracking-tight leading-snug border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={saveLabEdits}
+                  className="text-green-600 hover:text-green-800"
+                  title="Save"
+                >
+                  <Check size={28} />
+                </button>
+                <button
+                  onClick={cancelEditingLab}
+                  className="text-red-600 hover:text-red-800"
+                  title="Cancel"
+                >
+                  <X size={28} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-snug flex-1">
+                {lab.name}
+              </h1>
+              <button
+                onClick={startEditingLab}
+                className="text-gray-500 hover:text-gray-700 transition"
+                title="Edit Lab Name & Description"
+              >
+                <Edit2 size={24} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Lab Description */}
+        <div className="mt-2">
+          {isEditingLab ? (
+            <textarea
+              value={labEditDescription}
+              onChange={(e) => setLabEditDescription(e.target.value)}
+              rows={3}
+              className="w-full text-lg text-gray-600 leading-relaxed border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+              placeholder="Enter lab description"
+            />
+          ) : (
+            lab.description && (
+              <p className="text-lg text-gray-600 leading-relaxed">{lab.description}</p>
+            )
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-8 mt-8 border-b border-gray-300">
