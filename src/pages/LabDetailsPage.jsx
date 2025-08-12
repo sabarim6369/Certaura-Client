@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import axios from "axios";
-
+import apiurl from "../../api";
 export default function LabDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -42,7 +42,7 @@ const [editingAutoId, setEditingAutoId] = useState(null);
  useEffect(() => {
   const fetchExams = async () => {
     try {
-      const res = await axios.get(`http://localhost:3000/exams?labId=${id}`);
+      const res = await axios.get(`${apiurl}/exams?labId=${id}`);
       const examsWithId = res.data.map((exam) => ({
         id: exam._id || exam.id,
         ...exam,
@@ -60,7 +60,7 @@ const [editingAutoId, setEditingAutoId] = useState(null);
     if (activeTab === "devices") {
       setLoadingDevices(true);
       setDevicesError("");
-      fetch(`http://localhost:3000/agent/agents/lab/${id}`)
+      fetch(`${apiurl}/agent/agents/lab/${id}`)
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           return res.json();
@@ -134,7 +134,7 @@ const saveAutoMode = async (examId) => {
 
   try {
     // Call backend API to update this exam's autoMode, autoOnTime, autoOffTime
-    const response = await axios.put(`http://localhost:3000/exams/${examId}`, {
+    const response = await axios.put(`${apiurl}/exams/${examId}`, {
       autoMode: true,
       autoOnTime: examToUpdate.autoOnTime,
       autoOffTime: examToUpdate.autoOffTime,
@@ -169,7 +169,7 @@ const saveAutoMode = async (examId) => {
       labId: id,
     };
 
-    const response = await axios.post("http://localhost:3000/exams", payload);
+    const response = await axios.post(`${apiurl}/exams`, payload);
     const newExam = response.data;
 
     setExams((prevExams) => [
@@ -197,7 +197,7 @@ const saveAutoMode = async (examId) => {
 
   const removeExam = async (examId) => {
     try {
-      await axios.delete(`http://localhost:3000/exams/${examId}`);
+      await axios.delete(`${apiurl}/exams/${examId}`);
       setExams(exams.filter((exam) => exam.id !== examId));
     } catch (error) {
       console.error("Failed to delete exam:", error);
@@ -225,7 +225,7 @@ const toggleStatus = async (examId) => {
     }
 
     // Call backend update API for status change
-    const response = await axios.put(`http://localhost:3000/exams/${examId}`, {
+    const response = await axios.put(`${apiurl}/exams/${examId}`, {
       status: newStatus,
     });
 
@@ -246,7 +246,7 @@ const toggleStatus = async (examId) => {
   };
   const saveLabEdits = async () => {
     try {
-      await axios.put(`http://localhost:3000/lab/labs/${lab._id}`, {
+      await axios.put(`${apiurl}/lab/labs/${lab._id}`, {
         name: labEditName.trim(),
         description: labEditDescription.trim(),
       });
@@ -284,7 +284,7 @@ const toggleAutoMode = async (examId) => {
       autoOffTime: newAutoMode ? exam.autoOffTime : "",
     };
 
-    const response = await axios.put(`http://localhost:3000/exams/${examId}`, payload);
+    const response = await axios.put(`${apiurl}/exams/${examId}`, payload);
     const updatedExam = response.data;
 
     setExams((prev) =>
